@@ -42,6 +42,8 @@ class RoomClimateCard extends i {
         position: relative;
         overflow: hidden;
         padding: var(--card-padding, 20px);
+        min-width: 260px;
+        min-height: 140px;
       }
 
       .card-grid {
@@ -49,6 +51,9 @@ class RoomClimateCard extends i {
         position: relative;
         z-index: 1;
         gap: var(--card-gap, 16px);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-auto-rows: minmax(48px, auto);
+        min-height: 100%;
       }
 
       .room-name-block,
@@ -68,6 +73,9 @@ class RoomClimateCard extends i {
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.08em;
+        max-width: 100%;
+        white-space: nowrap;
+        overflow: hidden;
       }
 
       .temperature-block {
@@ -75,6 +83,7 @@ class RoomClimateCard extends i {
         justify-content: flex-start;
         align-items: baseline;
         gap: 8px;
+        grid-column: 1 / -1;
       }
 
       .temperature {
@@ -86,39 +95,43 @@ class RoomClimateCard extends i {
       .metrics-row {
         display: flex;
         justify-content: space-between;
-        align-items: center;
+        align-items: baseline;
+        width: 100%;
+        grid-column: 1 / -1;
       }
 
       .metric-pair {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 8px;
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
         width: 100%;
       }
 
       .metric {
-        font-size: 1rem;
-        color: var(--secondary-text-color);
+        font-size: var(--metric-font-size, 1.25rem);
+        color: var(--primary-text-color);
+        font-weight: 600;
+        white-space: nowrap;
       }
 
       ha-card.room-pos-top .card-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         grid-template-areas:
-          "room"
-          "temp"
-          "metrics";
+          "room room"
+          "temp temp"
+          "metrics metrics";
       }
 
       ha-card.room-pos-bottom .card-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         grid-template-areas:
-          "temp"
-          "metrics"
-          "room";
+          "temp temp"
+          "metrics metrics"
+          "room room";
       }
 
       ha-card.room-pos-left .card-grid {
-        grid-template-columns: auto 1fr;
+        grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
         grid-template-areas:
           "room temp"
           "room metrics";
@@ -126,7 +139,7 @@ class RoomClimateCard extends i {
       }
 
       ha-card.room-pos-right .card-grid {
-        grid-template-columns: 1fr auto;
+        grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
         grid-template-areas:
           "temp room"
           "metrics room";
@@ -239,6 +252,8 @@ class RoomClimateCard extends i {
         const humidity = this.getEntityState(this._config.humidity_entity);
         const dewPoint = this.getEntityState(this._config.dewpoint_entity);
         const battery = this.getEntityState(this._config.battery_entity);
+        const roomName = this.getRoomName();
+        const roomLabel = this.truncateRoomName(roomName, layout.size);
         return x `
       <ha-card
         class=${`room-pos-${layout.room_name} size-${layout.size}`}
@@ -246,7 +261,7 @@ class RoomClimateCard extends i {
       >
         <div class="card-grid">
           <div class="room-name-block">
-            <span class="room-name">${this.getRoomName()}</span>
+            <span class="room-name" title=${roomName}>${roomLabel}</span>
           </div>
           <div class="temperature-block">
             <span class="temperature"
@@ -279,6 +294,22 @@ class RoomClimateCard extends i {
     }
     getRoomName() {
         return this._config?.room_name ?? this._config?.name ?? "Room";
+    }
+    truncateRoomName(name, size) {
+        const limit = this.getRoomNameLimit(size);
+        if (name.length <= limit) {
+            return name;
+        }
+        const slicePoint = Math.max(1, limit - 2);
+        return `${name.slice(0, slicePoint)}..`;
+    }
+    getRoomNameLimit(size) {
+        const limits = {
+            compact: 10,
+            comfortable: 14,
+            expanded: 18,
+        };
+        return limits[size] ?? 12;
     }
     getSizeVariables(size) {
         const preset = CARD_SIZES[size] ?? CARD_SIZES.comfortable;
@@ -313,7 +344,11 @@ class RoomClimateCard extends i {
         if (value === undefined) {
             return "";
         }
-        return `${value}° dew`;
+        const numeric = Number(value);
+        const limited = Number.isFinite(numeric)
+            ? Math.round(numeric * 100) / 100
+            : value;
+        return `${limited}° dew`;
     }
     getBatteryThresholds() {
         const lowCandidate = Number(this._config?.battery_low_threshold);
