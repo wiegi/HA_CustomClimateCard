@@ -1,23 +1,23 @@
 import { LitElement, html, css, CSSResultGroup, TemplateResult } from "lit";
 
-interface HassEntity {
+export interface HassEntity {
   state: string;
   attributes: Record<string, unknown>;
 }
 
-interface HomeAssistant {
+export interface HomeAssistant {
   states: Record<string, HassEntity>;
 }
 
-type RoomNamePosition = "top" | "bottom" | "left" | "right";
-type CardSizeOption = "compact" | "comfortable" | "expanded";
+export type RoomNamePosition = "top" | "bottom" | "left" | "right";
+export type CardSizeOption = "compact" | "comfortable" | "expanded";
 
-interface RoomClimateCardLayoutConfig {
+export interface RoomClimateCardLayoutConfig {
   room_name?: RoomNamePosition;
   size?: CardSizeOption;
 }
 
-interface RoomClimateCardConfig {
+export interface RoomClimateCardConfig {
   type?: string;
   entity: string;
   humidity_entity?: string;
@@ -31,14 +31,14 @@ interface RoomClimateCardConfig {
   battery_empty_threshold?: number;
 }
 
-const ROOM_NAME_POSITIONS: RoomNamePosition[] = [
+export const ROOM_NAME_POSITIONS: RoomNamePosition[] = [
   "top",
   "bottom",
   "left",
   "right",
 ];
 
-const CARD_SIZES: Record<
+export const CARD_SIZES: Record<
   CardSizeOption,
   { padding: number; gap: number; temp: string }
 > = {
@@ -209,6 +209,26 @@ class RoomClimateCard extends LitElement {
         opacity: 0.18;
       }
     `;
+  }
+
+  public static async getConfigElement(): Promise<HTMLElement> {
+    await import("./RoomClimateCardEditor");
+    return document.createElement("room-climate-card-editor");
+  }
+
+  public static getStubConfig(): RoomClimateCardConfig {
+    return {
+      type: "custom:room-climate-card",
+      entity: "sensor.temperature",
+      humidity_entity: "sensor.humidity",
+      dewpoint_entity: "sensor.dewpoint",
+      battery_entity: "sensor.battery",
+      room_name: "Living Room",
+      layout: {
+        room_name: "top",
+        size: "comfortable",
+      },
+    };
   }
 
   public set hass(hass: HomeAssistant) {

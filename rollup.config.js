@@ -11,6 +11,7 @@ export default {
     file: "dist/room-climate-card.js",
     format: "es",
     sourcemap: true,
+    inlineDynamicImports: true,
   },
   plugins: [
     resolve(),
