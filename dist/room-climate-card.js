@@ -24,44 +24,174 @@ const t=globalThis,i$1=t.trustedTypes,s$1=i$1?i$1.createPolicy("lit-html",{creat
  * SPDX-License-Identifier: BSD-3-Clause
  */const s=globalThis;class i extends y$1{constructor(){super(...arguments),this.renderOptions={host:this},this._$Do=void 0;}createRenderRoot(){const t=super.createRenderRoot();return this.renderOptions.renderBefore??=t.firstChild,t}update(t){const r=this.render();this.hasUpdated||(this.renderOptions.isConnected=this.isConnected),super.update(t),this._$Do=B(r,this.renderRoot,this.renderOptions);}connectedCallback(){super.connectedCallback(),this._$Do?.setConnected(true);}disconnectedCallback(){super.disconnectedCallback(),this._$Do?.setConnected(false);}render(){return T}}i._$litElement$=true,i["finalized"]=true,s.litElementHydrateSupport?.({LitElement:i});const o=s.litElementPolyfillSupport;o?.({LitElement:i});(s.litElementVersions??=[]).push("4.2.1");
 
+const ROOM_NAME_POSITIONS = [
+    "top",
+    "bottom",
+    "left",
+    "right",
+];
+const CARD_SIZES = {
+    compact: { padding: 12, gap: 8, temp: "2rem" },
+    comfortable: { padding: 20, gap: 16, temp: "2.4rem" },
+    expanded: { padding: 28, gap: 20, temp: "2.8rem" },
+};
 class RoomClimateCard extends i {
     static get styles() {
         return i$3 `
       ha-card {
-        padding: 16px;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
+        position: relative;
+        overflow: hidden;
+        padding: var(--card-padding, 20px);
       }
 
-      .primary-line {
+      .card-grid {
+        display: grid;
+        position: relative;
+        z-index: 1;
+        gap: var(--card-gap, 16px);
+      }
+
+      .room-name-block,
+      .temperature-block,
+      .metrics-row {
+        grid-column: 1 / -1;
+      }
+
+      .room-name-block {
         display: flex;
-        justify-content: space-between;
-        align-items: baseline;
+        justify-content: center;
+        align-items: center;
       }
 
       .room-name {
         font-size: 1rem;
         font-weight: 600;
-        transform: rotate(-90deg);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .temperature-block {
+        display: flex;
+        justify-content: flex-start;
+        align-items: baseline;
+        gap: 8px;
       }
 
       .temperature {
-        font-size: 2rem;
         font-weight: 700;
+        line-height: 1;
+        font-size: var(--temp-size, 2.4rem);
       }
 
-      .metadata {
+      .metrics-row {
         display: flex;
-        gap: 12px;
-        font-size: 0.9rem;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .metric-pair {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        width: 100%;
+      }
+
+      .metric {
+        font-size: 1rem;
         color: var(--secondary-text-color);
       }
 
-      .battery {
-        display: inline-flex;
+      ha-card.room-pos-top .card-grid {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+          "room"
+          "temp"
+          "metrics";
+      }
+
+      ha-card.room-pos-bottom .card-grid {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+          "temp"
+          "metrics"
+          "room";
+      }
+
+      ha-card.room-pos-left .card-grid {
+        grid-template-columns: auto 1fr;
+        grid-template-areas:
+          "room temp"
+          "room metrics";
         align-items: center;
-        gap: 4px;
+      }
+
+      ha-card.room-pos-right .card-grid {
+        grid-template-columns: 1fr auto;
+        grid-template-areas:
+          "temp room"
+          "metrics room";
+        align-items: center;
+      }
+
+      .room-name-block {
+        grid-area: room;
+      }
+
+      .temperature-block {
+        grid-area: temp;
+      }
+
+      .metrics-row {
+        grid-area: metrics;
+      }
+
+      ha-card.room-pos-left .room-name,
+      ha-card.room-pos-right .room-name {
+        display: inline-block;
+      }
+
+      ha-card.room-pos-left .room-name {
+        transform: rotate(-90deg);
+      }
+
+      ha-card.room-pos-right .room-name {
+        transform: rotate(90deg);
+      }
+
+      .battery-overlay {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 60%;
+        height: 60%;
+        transform: translate(-50%, -50%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+        color: var(--battery-overlay-color, rgba(15, 23, 42, 0.8));
+        z-index: 2;
+        opacity: 0.12;
+      }
+
+      .battery-overlay ha-icon {
+        width: 100%;
+        height: 100%;
+        --mdc-icon-size: 100%;
+      }
+
+      .battery-overlay.low {
+        color: var(--battery-overlay-low-color, #f5a524);
+        opacity: 0.32;
+      }
+
+      .battery-overlay.empty {
+        color: var(--battery-overlay-empty-color, #e53935);
+        opacity: 0.45;
+      }
+
+      .battery-overlay.normal {
+        opacity: 0.18;
       }
     `;
     }
@@ -85,32 +215,63 @@ class RoomClimateCard extends i {
         if (!this._config || !this._hass) {
             return x ``;
         }
+        const layout = this.getLayoutConfig();
+        const sizeVars = this.getSizeVariables(layout.size);
         const temperature = this.getEntityState(this._config.entity);
         const humidity = this.getEntityState(this._config.humidity_entity);
         const dewPoint = this.getEntityState(this._config.dewpoint_entity);
         const battery = this.getEntityState(this._config.battery_entity);
         return x `
-      <ha-card>
-        <div class="primary-line">
-          <span class="room-name">${this.getRoomName()}</span>
-          <span class="temperature"
-            >${this.formatTemperature(temperature?.state)}</span
-          >
+      <ha-card
+        class=${`room-pos-${layout.room_name} size-${layout.size}`}
+        style=${this.inlineSizeStyle(sizeVars)}
+      >
+        <div class="card-grid">
+          <div class="room-name-block">
+            <span class="room-name">${this.getRoomName()}</span>
+          </div>
+          <div class="temperature-block">
+            <span class="temperature"
+              >${this.formatTemperature(temperature?.state)}</span
+            >
+          </div>
+          <div class="metrics-row">
+            <div class="metric-pair">
+              <span class="metric humidity"
+                >${humidity ? this.formatHumidity(humidity.state) : ""}</span
+              >
+              <span class="metric dew-point"
+                >${dewPoint ? this.formatDewPoint(dewPoint.state) : ""}</span
+              >
+            </div>
+          </div>
         </div>
-        <div class="metadata">
-          ${humidity
-            ? x `<span>${this.formatHumidity(humidity.state)}</span>`
-            : ""}
-          ${dewPoint
-            ? x `<span>${this.formatDewPoint(dewPoint.state)}</span>`
-            : ""}
-          ${this.renderBatteryIndicator(battery)}
-        </div>
+        ${this.renderBatteryOverlay(battery)}
       </ha-card>
     `;
     }
+    getLayoutConfig() {
+        const requested = this._config?.layout?.room_name;
+        const sizeCandidate = this._config?.layout?.size;
+        const room_name = requested && ROOM_NAME_POSITIONS.includes(requested) ? requested : "top";
+        const size = sizeCandidate && CARD_SIZES[sizeCandidate]
+            ? sizeCandidate
+            : "comfortable";
+        return { room_name, size };
+    }
     getRoomName() {
         return this._config?.room_name ?? this._config?.name ?? "Room";
+    }
+    getSizeVariables(size) {
+        const preset = CARD_SIZES[size] ?? CARD_SIZES.comfortable;
+        return {
+            padding: preset.padding,
+            gap: preset.gap,
+            tempScale: preset.temp,
+        };
+    }
+    inlineSizeStyle(vars) {
+        return `--card-padding:${vars.padding}px;--card-gap:${vars.gap}px;--temp-size:${vars.tempScale};`;
     }
     getEntityState(entityId) {
         if (!entityId || !this._hass) {
@@ -136,6 +297,16 @@ class RoomClimateCard extends i {
         }
         return `${value}° dew`;
     }
+    getBatteryThresholds() {
+        const lowCandidate = Number(this._config?.battery_low_threshold);
+        const emptyCandidate = Number(this._config?.battery_empty_threshold);
+        const empty = Number.isFinite(emptyCandidate) ? emptyCandidate : 10;
+        const low = Number.isFinite(lowCandidate) ? lowCandidate : 30;
+        return {
+            empty,
+            low: Math.max(low, empty),
+        };
+    }
     getBatteryLevel(entity) {
         if (!entity) {
             return undefined;
@@ -143,7 +314,20 @@ class RoomClimateCard extends i {
         const numeric = Number(entity.state);
         return Number.isFinite(numeric) ? numeric : undefined;
     }
+    getBatteryStatus(level) {
+        const { low, empty } = this.getBatteryThresholds();
+        if (level <= empty) {
+            return "empty";
+        }
+        if (level <= low) {
+            return "low";
+        }
+        return "normal";
+    }
     getBatteryIcon(level) {
+        if (this._config?.battery_icon) {
+            return this._config.battery_icon;
+        }
         if (level === undefined) {
             return "mdi:battery-unknown";
         }
@@ -158,16 +342,16 @@ class RoomClimateCard extends i {
         }
         return "mdi:battery-alert";
     }
-    renderBatteryIndicator(entity) {
+    renderBatteryOverlay(entity) {
         const level = this.getBatteryLevel(entity);
         if (level === undefined) {
             return "";
         }
+        const status = this.getBatteryStatus(level);
         return x `
-      <span class="battery">
+      <div class="battery-overlay ${status}">
         <ha-icon .icon=${this.getBatteryIcon(level)}></ha-icon>
-        ${level}%
-      </span>
+      </div>
     `;
     }
 }

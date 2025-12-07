@@ -4,8 +4,9 @@ A reusable Home Assistant Lovelace card built with LitElement that surfaces temp
 
 ## Features
 
-- Minimal layout optimized for quick climate checks
+- Minimal layout optimized for quick climate checks with selectable compact/comfortable/expanded densities
 - Optional humidity, dew point, and battery indicators
+- Battery icon automatically overlays the card when levels fall below configurable thresholds and can be overridden per card
 - Designed for bundling and distribution through HACS
 
 ## Installation
@@ -33,6 +34,12 @@ humidity_entity: sensor.humidity
 dewpoint_entity: sensor.dewpoint
 battery_entity: sensor.battery
 room_name: Wohnzimmer
+layout:
+  room_name: left
+  size: compact
+battery_low_threshold: 30
+battery_empty_threshold: 10
+battery_icon: mdi:battery-heart
 ```
 
 ## Development
