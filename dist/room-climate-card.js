@@ -39,39 +39,38 @@ const ROOM_NAME_LIMITS = {
 class RoomClimateCard extends i {
     static get styles() {
         return i$3 `
+      :host {
+        display: block;
+      }
+
       ha-card {
         position: relative;
         overflow: hidden;
-        padding: var(--card-padding, 12px);
+        padding: var(--room-climate-card-padding, var(--card-padding, 10px));
       }
 
       .card-grid {
         display: grid;
         position: relative;
         z-index: 1;
-        gap: var(--card-gap, 8px);
+        gap: var(--room-climate-card-gap, 6px);
         grid-template-columns: minmax(0, 1fr);
-        grid-auto-rows: minmax(20px, auto);
+        grid-auto-rows: minmax(18px, auto);
         min-height: 0;
-      }
-
-      .room-name-block,
-      .temperature-block,
-      .metrics-row {
-        grid-column: 1 / -1;
       }
 
       .room-name-block {
         display: flex;
         justify-content: center;
         align-items: center;
+        padding: 0;
       }
 
       .room-name {
-        font-size: 0.85rem;
+        font-size: var(--room-climate-room-size, 0.75rem);
         font-weight: 600;
         text-transform: uppercase;
-        letter-spacing: 0.06em;
+        letter-spacing: 0.05em;
         max-width: 100%;
         white-space: nowrap;
         overflow: hidden;
@@ -81,14 +80,14 @@ class RoomClimateCard extends i {
         display: flex;
         justify-content: flex-start;
         align-items: baseline;
-        gap: 4px;
+        gap: 2px;
         grid-column: 1 / -1;
       }
 
       .temperature {
         font-weight: 600;
         line-height: 1;
-        font-size: var(--room-climate-temp-size, 1.6rem);
+        font-size: var(--room-climate-temp-size, 1.35rem);
       }
 
       .metrics-row {
@@ -102,17 +101,45 @@ class RoomClimateCard extends i {
       .metric-pair {
         display: flex;
         justify-content: space-between;
-        gap: 8px;
+        gap: 6px;
         width: 100%;
         flex-wrap: wrap;
       }
 
       .metric {
-        font-size: var(--room-climate-metric-size, 0.95rem);
+        font-size: var(--room-climate-metric-size, 0.85rem);
         color: var(--primary-text-color);
         font-weight: 600;
         white-space: nowrap;
         flex: 1 1 45%;
+      }
+
+      ha-card.room-pos-top .room-name-block {
+        margin-top: calc(
+          -1 * var(--room-climate-card-padding, var(--card-padding, 10px)) + 2px
+        );
+        padding-top: 2px;
+      }
+
+      ha-card.room-pos-bottom .room-name-block {
+        margin-bottom: calc(
+          -1 * var(--room-climate-card-padding, var(--card-padding, 10px)) + 2px
+        );
+        padding-bottom: 2px;
+      }
+
+      ha-card.room-pos-left .room-name-block {
+        margin-left: calc(
+          -1 * var(--room-climate-card-padding, var(--card-padding, 10px)) + 2px
+        );
+        padding-left: 2px;
+      }
+
+      ha-card.room-pos-right .room-name-block {
+        margin-right: calc(
+          -1 * var(--room-climate-card-padding, var(--card-padding, 10px)) + 2px
+        );
+        padding-right: 2px;
       }
 
       ha-card.room-pos-top .card-grid {
