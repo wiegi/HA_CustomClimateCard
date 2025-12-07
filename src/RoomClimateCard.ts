@@ -41,6 +41,7 @@ class RoomClimateCard extends LitElement {
       .room-name {
         font-size: 1rem;
         font-weight: 600;
+        transform: rotate(-90deg);
       }
 
       .temperature {
