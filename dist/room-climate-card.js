@@ -42,16 +42,16 @@ class RoomClimateCard extends i {
       ha-card {
         position: relative;
         overflow: hidden;
-        padding: var(--card-padding, 20px);
+        padding: var(--card-padding, 12px);
       }
 
       .card-grid {
         display: grid;
         position: relative;
         z-index: 1;
-        gap: var(--card-gap, 16px);
+        gap: var(--card-gap, 8px);
         grid-template-columns: minmax(0, 1fr);
-        grid-auto-rows: minmax(32px, auto);
+        grid-auto-rows: minmax(20px, auto);
         min-height: 0;
       }
 
@@ -68,10 +68,10 @@ class RoomClimateCard extends i {
       }
 
       .room-name {
-        font-size: 1rem;
+        font-size: 0.85rem;
         font-weight: 600;
         text-transform: uppercase;
-        letter-spacing: 0.08em;
+        letter-spacing: 0.06em;
         max-width: 100%;
         white-space: nowrap;
         overflow: hidden;
@@ -81,14 +81,14 @@ class RoomClimateCard extends i {
         display: flex;
         justify-content: flex-start;
         align-items: baseline;
-        gap: 8px;
+        gap: 4px;
         grid-column: 1 / -1;
       }
 
       .temperature {
-        font-weight: 700;
+        font-weight: 600;
         line-height: 1;
-        font-size: var(--temp-size, 2.4rem);
+        font-size: var(--room-climate-temp-size, 1.6rem);
       }
 
       .metrics-row {
@@ -102,17 +102,17 @@ class RoomClimateCard extends i {
       .metric-pair {
         display: flex;
         justify-content: space-between;
-        gap: 12px;
+        gap: 8px;
         width: 100%;
         flex-wrap: wrap;
       }
 
       .metric {
-        font-size: var(--metric-font-size, 1.25rem);
+        font-size: var(--room-climate-metric-size, 0.95rem);
         color: var(--primary-text-color);
         font-weight: 600;
         white-space: nowrap;
-        flex: 1 1 0;
+        flex: 1 1 45%;
       }
 
       ha-card.room-pos-top .card-grid {
@@ -176,16 +176,16 @@ class RoomClimateCard extends i {
         position: absolute;
         top: 50%;
         left: 50%;
-        width: 60%;
-        height: 60%;
+        width: 48%;
+        height: 48%;
         transform: translate(-50%, -50%);
         display: flex;
         align-items: center;
         justify-content: center;
         pointer-events: none;
-        color: var(--battery-overlay-color, rgba(15, 23, 42, 0.8));
+        color: var(--battery-overlay-color, rgba(15, 23, 42, 0.7));
         z-index: 2;
-        opacity: 0.12;
+        opacity: 0.1;
       }
 
       .battery-overlay ha-icon {
