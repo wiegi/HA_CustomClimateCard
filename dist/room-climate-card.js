@@ -30,10 +30,11 @@ const ROOM_NAME_POSITIONS = [
     "left",
     "right",
 ];
-const CARD_SIZES = {
-    compact: { padding: 12, gap: 8, temp: "2rem" },
-    comfortable: { padding: 20, gap: 16, temp: "2.4rem" },
-    expanded: { padding: 28, gap: 20, temp: "2.8rem" },
+const ROOM_NAME_LIMITS = {
+    top: 14,
+    bottom: 14,
+    left: 10,
+    right: 10,
 };
 class RoomClimateCard extends i {
     static get styles() {
@@ -42,8 +43,6 @@ class RoomClimateCard extends i {
         position: relative;
         overflow: hidden;
         padding: var(--card-padding, 20px);
-        min-width: 260px;
-        min-height: 140px;
       }
 
       .card-grid {
@@ -51,9 +50,9 @@ class RoomClimateCard extends i {
         position: relative;
         z-index: 1;
         gap: var(--card-gap, 16px);
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        grid-auto-rows: minmax(48px, auto);
-        min-height: 100%;
+        grid-template-columns: minmax(0, 1fr);
+        grid-auto-rows: minmax(32px, auto);
+        min-height: 0;
       }
 
       .room-name-block,
@@ -103,8 +102,9 @@ class RoomClimateCard extends i {
       .metric-pair {
         display: flex;
         justify-content: space-between;
-        gap: 20px;
+        gap: 12px;
         width: 100%;
+        flex-wrap: wrap;
       }
 
       .metric {
@@ -112,26 +112,27 @@ class RoomClimateCard extends i {
         color: var(--primary-text-color);
         font-weight: 600;
         white-space: nowrap;
+        flex: 1 1 0;
       }
 
       ha-card.room-pos-top .card-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: minmax(0, 1fr);
         grid-template-areas:
-          "room room"
-          "temp temp"
-          "metrics metrics";
+          "room"
+          "temp"
+          "metrics";
       }
 
       ha-card.room-pos-bottom .card-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: minmax(0, 1fr);
         grid-template-areas:
-          "temp temp"
-          "metrics metrics"
-          "room room";
+          "temp"
+          "metrics"
+          "room";
       }
 
       ha-card.room-pos-left .card-grid {
-        grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+        grid-template-columns: minmax(0, auto) minmax(0, 1fr);
         grid-template-areas:
           "room temp"
           "room metrics";
@@ -139,7 +140,7 @@ class RoomClimateCard extends i {
       }
 
       ha-card.room-pos-right .card-grid {
-        grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+        grid-template-columns: minmax(0, 1fr) minmax(0, auto);
         grid-template-areas:
           "temp room"
           "metrics room";
@@ -222,7 +223,6 @@ class RoomClimateCard extends i {
             room_name: "Living Room",
             layout: {
                 room_name: "top",
-                size: "comfortable",
             },
         };
     }
@@ -240,25 +240,21 @@ class RoomClimateCard extends i {
         };
     }
     getCardSize() {
-        return 3;
+        return 1;
     }
     render() {
         if (!this._config || !this._hass) {
             return x ``;
         }
         const layout = this.getLayoutConfig();
-        const sizeVars = this.getSizeVariables(layout.size);
         const temperature = this.getEntityState(this._config.entity);
         const humidity = this.getEntityState(this._config.humidity_entity);
         const dewPoint = this.getEntityState(this._config.dewpoint_entity);
         const battery = this.getEntityState(this._config.battery_entity);
         const roomName = this.getRoomName();
-        const roomLabel = this.truncateRoomName(roomName, layout.size);
+        const roomLabel = this.truncateRoomName(roomName, layout.room_name);
         return x `
-      <ha-card
-        class=${`room-pos-${layout.room_name} size-${layout.size}`}
-        style=${this.inlineSizeStyle(sizeVars)}
-      >
+      <ha-card class=${`room-pos-${layout.room_name}`}>
         <div class="card-grid">
           <div class="room-name-block">
             <span class="room-name" title=${roomName}>${roomLabel}</span>
@@ -285,42 +281,22 @@ class RoomClimateCard extends i {
     }
     getLayoutConfig() {
         const requested = this._config?.layout?.room_name;
-        const sizeCandidate = this._config?.layout?.size;
         const room_name = requested && ROOM_NAME_POSITIONS.includes(requested) ? requested : "top";
-        const size = sizeCandidate && CARD_SIZES[sizeCandidate]
-            ? sizeCandidate
-            : "comfortable";
-        return { room_name, size };
+        return { room_name };
     }
     getRoomName() {
         return this._config?.room_name ?? this._config?.name ?? "Room";
     }
-    truncateRoomName(name, size) {
-        const limit = this.getRoomNameLimit(size);
+    truncateRoomName(name, position) {
+        const limit = this.getRoomNameLimit(position);
         if (name.length <= limit) {
             return name;
         }
         const slicePoint = Math.max(1, limit - 2);
         return `${name.slice(0, slicePoint)}..`;
     }
-    getRoomNameLimit(size) {
-        const limits = {
-            compact: 10,
-            comfortable: 14,
-            expanded: 18,
-        };
-        return limits[size] ?? 12;
-    }
-    getSizeVariables(size) {
-        const preset = CARD_SIZES[size] ?? CARD_SIZES.comfortable;
-        return {
-            padding: preset.padding,
-            gap: preset.gap,
-            tempScale: preset.temp,
-        };
-    }
-    inlineSizeStyle(vars) {
-        return `--card-padding:${vars.padding}px;--card-gap:${vars.gap}px;--temp-size:${vars.tempScale};`;
+    getRoomNameLimit(position) {
+        return ROOM_NAME_LIMITS[position] ?? 12;
     }
     getEntityState(entityId) {
         if (!entityId || !this._hass) {
@@ -430,7 +406,6 @@ class RoomClimateCardEditor extends i {
             ...config,
             layout: {
                 room_name: config.layout?.room_name ?? "top",
-                size: config.layout?.size ?? "comfortable",
             },
         };
     }
@@ -474,18 +449,6 @@ class RoomClimateCardEditor extends i {
             ${this.renderSelectOption("bottom", "Bottom")}
             ${this.renderSelectOption("left", "Left")}
             ${this.renderSelectOption("right", "Right")}
-          </select>
-
-          <label class="field-label">Density</label>
-          <select
-            class="form-select"
-            .value=${config.layout?.size ?? "comfortable"}
-            data-config-value="layout.size"
-            @change=${this._handleSelect}
-          >
-            ${this.renderSelectOption("compact", "Compact")}
-            ${this.renderSelectOption("comfortable", "Comfortable")}
-            ${this.renderSelectOption("expanded", "Expanded")}
           </select>
         </div>
 
@@ -574,12 +537,16 @@ class RoomClimateCardEditor extends i {
         const updated = { ...this._config };
         if (path.startsWith("layout.")) {
             const key = path.split(".")[1];
-            updated.layout = {
-                ...updated.layout,
-                [key]: value,
-            };
-            if (updated.layout?.room_name === undefined &&
-                updated.layout?.size === undefined) {
+            if (key === "room_name") {
+                const nextValue = typeof value === "string" && value
+                    ? value
+                    : undefined;
+                updated.layout = {
+                    ...updated.layout,
+                    room_name: nextValue,
+                };
+            }
+            if (updated.layout?.room_name === undefined) {
                 delete updated.layout;
             }
         }
@@ -640,5 +607,5 @@ var RoomClimateCardEditor$1 = /*#__PURE__*/Object.freeze({
     __proto__: null
 });
 
-export { CARD_SIZES, ROOM_NAME_POSITIONS };
+export { ROOM_NAME_POSITIONS };
 //# sourceMappingURL=room-climate-card.js.map

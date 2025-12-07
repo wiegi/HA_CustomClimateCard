@@ -4,7 +4,6 @@ import type {
   RoomClimateCardConfig,
   RoomClimateCardLayoutConfig,
   RoomNamePosition,
-  CardSizeOption,
 } from "./RoomClimateCard";
 
 interface EditorTarget extends EventTarget {
@@ -29,7 +28,6 @@ class RoomClimateCardEditor extends LitElement {
       ...config,
       layout: {
         room_name: config.layout?.room_name ?? "top",
-        size: config.layout?.size ?? "comfortable",
       },
     };
   }
@@ -93,18 +91,6 @@ class RoomClimateCardEditor extends LitElement {
             ${this.renderSelectOption("bottom", "Bottom")}
             ${this.renderSelectOption("left", "Left")}
             ${this.renderSelectOption("right", "Right")}
-          </select>
-
-          <label class="field-label">Density</label>
-          <select
-            class="form-select"
-            .value=${config.layout?.size ?? "comfortable"}
-            data-config-value="layout.size"
-            @change=${this._handleSelect}
-          >
-            ${this.renderSelectOption("compact", "Compact")}
-            ${this.renderSelectOption("comfortable", "Comfortable")}
-            ${this.renderSelectOption("expanded", "Expanded")}
           </select>
         </div>
 
@@ -214,14 +200,17 @@ class RoomClimateCardEditor extends LitElement {
 
     if (path.startsWith("layout.")) {
       const key = path.split(".")[1] as keyof RoomClimateCardLayoutConfig;
-      updated.layout = {
-        ...updated.layout,
-        [key]: value,
-      };
-      if (
-        updated.layout?.room_name === undefined &&
-        updated.layout?.size === undefined
-      ) {
+      if (key === "room_name") {
+        const nextValue =
+          typeof value === "string" && value
+            ? (value as RoomNamePosition)
+            : undefined;
+        updated.layout = {
+          ...updated.layout,
+          room_name: nextValue,
+        };
+      }
+      if (updated.layout?.room_name === undefined) {
         delete updated.layout;
       }
     } else if (value === undefined || value === "") {

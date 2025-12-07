@@ -10,11 +10,9 @@ export interface HomeAssistant {
 }
 
 export type RoomNamePosition = "top" | "bottom" | "left" | "right";
-export type CardSizeOption = "compact" | "comfortable" | "expanded";
 
 export interface RoomClimateCardLayoutConfig {
   room_name?: RoomNamePosition;
-  size?: CardSizeOption;
 }
 
 export interface RoomClimateCardConfig {
@@ -38,13 +36,11 @@ export const ROOM_NAME_POSITIONS: RoomNamePosition[] = [
   "right",
 ];
 
-export const CARD_SIZES: Record<
-  CardSizeOption,
-  { padding: number; gap: number; temp: string }
-> = {
-  compact: { padding: 12, gap: 8, temp: "2rem" },
-  comfortable: { padding: 20, gap: 16, temp: "2.4rem" },
-  expanded: { padding: 28, gap: 20, temp: "2.8rem" },
+const ROOM_NAME_LIMITS: Record<RoomNamePosition, number> = {
+  top: 14,
+  bottom: 14,
+  left: 10,
+  right: 10,
 };
 
 class RoomClimateCard extends LitElement {
@@ -57,8 +53,6 @@ class RoomClimateCard extends LitElement {
         position: relative;
         overflow: hidden;
         padding: var(--card-padding, 20px);
-        min-width: 260px;
-        min-height: 140px;
       }
 
       .card-grid {
@@ -66,9 +60,9 @@ class RoomClimateCard extends LitElement {
         position: relative;
         z-index: 1;
         gap: var(--card-gap, 16px);
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        grid-auto-rows: minmax(48px, auto);
-        min-height: 100%;
+        grid-template-columns: minmax(0, 1fr);
+        grid-auto-rows: minmax(32px, auto);
+        min-height: 0;
       }
 
       .room-name-block,
@@ -118,8 +112,9 @@ class RoomClimateCard extends LitElement {
       .metric-pair {
         display: flex;
         justify-content: space-between;
-        gap: 20px;
+        gap: 12px;
         width: 100%;
+        flex-wrap: wrap;
       }
 
       .metric {
@@ -127,26 +122,27 @@ class RoomClimateCard extends LitElement {
         color: var(--primary-text-color);
         font-weight: 600;
         white-space: nowrap;
+        flex: 1 1 0;
       }
 
       ha-card.room-pos-top .card-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: minmax(0, 1fr);
         grid-template-areas:
-          "room room"
-          "temp temp"
-          "metrics metrics";
+          "room"
+          "temp"
+          "metrics";
       }
 
       ha-card.room-pos-bottom .card-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: minmax(0, 1fr);
         grid-template-areas:
-          "temp temp"
-          "metrics metrics"
-          "room room";
+          "temp"
+          "metrics"
+          "room";
       }
 
       ha-card.room-pos-left .card-grid {
-        grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+        grid-template-columns: minmax(0, auto) minmax(0, 1fr);
         grid-template-areas:
           "room temp"
           "room metrics";
@@ -154,7 +150,7 @@ class RoomClimateCard extends LitElement {
       }
 
       ha-card.room-pos-right .card-grid {
-        grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+        grid-template-columns: minmax(0, 1fr) minmax(0, auto);
         grid-template-areas:
           "temp room"
           "metrics room";
@@ -239,7 +235,6 @@ class RoomClimateCard extends LitElement {
       room_name: "Living Room",
       layout: {
         room_name: "top",
-        size: "comfortable",
       },
     };
   }
@@ -261,7 +256,7 @@ class RoomClimateCard extends LitElement {
   }
 
   public getCardSize(): number {
-    return 3;
+    return 1;
   }
 
   protected render(): TemplateResult {
@@ -270,19 +265,15 @@ class RoomClimateCard extends LitElement {
     }
 
     const layout = this.getLayoutConfig();
-    const sizeVars = this.getSizeVariables(layout.size);
     const temperature = this.getEntityState(this._config.entity);
     const humidity = this.getEntityState(this._config.humidity_entity);
     const dewPoint = this.getEntityState(this._config.dewpoint_entity);
     const battery = this.getEntityState(this._config.battery_entity);
     const roomName = this.getRoomName();
-    const roomLabel = this.truncateRoomName(roomName, layout.size);
+    const roomLabel = this.truncateRoomName(roomName, layout.room_name);
 
     return html`
-      <ha-card
-        class=${`room-pos-${layout.room_name} size-${layout.size}`}
-        style=${this.inlineSizeStyle(sizeVars)}
-      >
+      <ha-card class=${`room-pos-${layout.room_name}`}>
         <div class="card-grid">
           <div class="room-name-block">
             <span class="room-name" title=${roomName}>${roomLabel}</span>
@@ -310,26 +301,19 @@ class RoomClimateCard extends LitElement {
 
   private getLayoutConfig(): {
     room_name: RoomNamePosition;
-    size: CardSizeOption;
   } {
     const requested = this._config?.layout?.room_name;
-    const sizeCandidate = this._config?.layout?.size;
     const room_name =
       requested && ROOM_NAME_POSITIONS.includes(requested) ? requested : "top";
-    const size: CardSizeOption =
-      sizeCandidate && CARD_SIZES[sizeCandidate]
-        ? sizeCandidate
-        : "comfortable";
-
-    return { room_name, size };
+    return { room_name };
   }
 
   private getRoomName(): string {
     return this._config?.room_name ?? this._config?.name ?? "Room";
   }
 
-  private truncateRoomName(name: string, size: CardSizeOption): string {
-    const limit = this.getRoomNameLimit(size);
+  private truncateRoomName(name: string, position: RoomNamePosition): string {
+    const limit = this.getRoomNameLimit(position);
     if (name.length <= limit) {
       return name;
     }
@@ -338,35 +322,8 @@ class RoomClimateCard extends LitElement {
     return `${name.slice(0, slicePoint)}..`;
   }
 
-  private getRoomNameLimit(size: CardSizeOption): number {
-    const limits: Record<CardSizeOption, number> = {
-      compact: 10,
-      comfortable: 14,
-      expanded: 18,
-    };
-
-    return limits[size] ?? 12;
-  }
-
-  private getSizeVariables(size: CardSizeOption): {
-    padding: number;
-    gap: number;
-    tempScale: string;
-  } {
-    const preset = CARD_SIZES[size] ?? CARD_SIZES.comfortable;
-    return {
-      padding: preset.padding,
-      gap: preset.gap,
-      tempScale: preset.temp,
-    };
-  }
-
-  private inlineSizeStyle(vars: {
-    padding: number;
-    gap: number;
-    tempScale: string;
-  }): string {
-    return `--card-padding:${vars.padding}px;--card-gap:${vars.gap}px;--temp-size:${vars.tempScale};`;
+  private getRoomNameLimit(position: RoomNamePosition): number {
+    return ROOM_NAME_LIMITS[position] ?? 12;
   }
 
   private getEntityState(entityId?: string): HassEntity | undefined {
