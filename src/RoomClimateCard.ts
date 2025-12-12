@@ -1,5 +1,4 @@
 import { LitElement, html, css, CSSResultGroup, TemplateResult } from "lit";
-import "./RoomClimateCardEditor";
 
 export interface HassEntity {
   state: string;
@@ -292,7 +291,8 @@ class RoomClimateCard extends LitElement {
     };
   }
 
-  public static getConfigElement(): HTMLElement {
+  public static async getConfigElement(): Promise<HTMLElement> {
+    await import("./RoomClimateCardEditor");
     return document.createElement("room-climate-card-editor");
   }
 
