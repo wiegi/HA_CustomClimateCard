@@ -31,22 +31,27 @@ const ROOM_NAME_POSITIONS = [
     "right",
 ];
 const ROOM_NAME_LIMITS = {
-    top: 14,
-    bottom: 14,
-    left: 10,
-    right: 10,
+    top: 0,
+    bottom: 0,
+    left: 5,
+    right: 5,
 };
 class RoomClimateCard extends i {
     static get styles() {
         return i$3 `
       :host {
         display: block;
+        height: 100%;
+        width: 100%;
       }
 
       ha-card {
         position: relative;
         overflow: hidden;
         padding: var(--room-climate-card-padding, var(--card-padding, 10px));
+        height: 100%;
+        width: 100%;
+        box-sizing: border-box;
       }
 
       .card-grid {
@@ -57,6 +62,7 @@ class RoomClimateCard extends i {
         grid-template-columns: minmax(0, 1fr);
         grid-auto-rows: minmax(18px, auto);
         min-height: 0;
+        height: 100%;
       }
 
       .room-name-block {
@@ -64,6 +70,12 @@ class RoomClimateCard extends i {
         justify-content: center;
         align-items: center;
         padding: 0;
+        position: relative;
+        width: 100%;
+        height: 100%;
+        min-width: 0;
+        min-height: 0;
+        overflow: hidden;
       }
 
       .room-name {
@@ -74,6 +86,7 @@ class RoomClimateCard extends i {
         max-width: 100%;
         white-space: nowrap;
         overflow: hidden;
+        text-overflow: ellipsis;
       }
 
       .temperature-block {
@@ -133,6 +146,9 @@ class RoomClimateCard extends i {
           -1 * var(--room-climate-card-padding, var(--card-padding, 10px)) + 2px
         );
         padding-left: 2px;
+        justify-content: flex-start;
+        align-items: flex-end;
+        overflow: hidden;
       }
 
       ha-card.room-pos-right .room-name-block {
@@ -140,6 +156,9 @@ class RoomClimateCard extends i {
           -1 * var(--room-climate-card-padding, var(--card-padding, 10px)) + 2px
         );
         padding-right: 2px;
+        justify-content: flex-end;
+        align-items: flex-start;
+        overflow: hidden;
       }
 
       ha-card.room-pos-top .card-grid {
@@ -159,7 +178,7 @@ class RoomClimateCard extends i {
       }
 
       ha-card.room-pos-left .card-grid {
-        grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+        grid-template-columns: 1rem minmax(0, 1fr);
         grid-template-areas:
           "room temp"
           "room metrics";
@@ -167,7 +186,7 @@ class RoomClimateCard extends i {
       }
 
       ha-card.room-pos-right .card-grid {
-        grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+        grid-template-columns: minmax(0, 1fr) 1rem;
         grid-template-areas:
           "temp room"
           "metrics room";
@@ -188,17 +207,26 @@ class RoomClimateCard extends i {
 
       ha-card.room-pos-left .room-name,
       ha-card.room-pos-right .room-name {
-        display: inline-block;
+        writing-mode: vertical-lr;
+        text-orientation: mixed;
+        max-height: 100%;
+        overflow: hidden;
+        text-overflow: clip;
       }
 
       ha-card.room-pos-left .room-name {
-        transform: rotate(-90deg);
+        transform: rotate(180deg);
       }
 
       ha-card.room-pos-right .room-name {
-        transform: rotate(90deg);
+        /* no transform needed - text flows top to bottom */
       }
 
+      ha-card.room-pos-left .room-name-block,
+      ha-card.room-pos-right .room-name-block {
+        max-height: 100%;
+        overflow: hidden;
+      }
       .battery-overlay {
         position: absolute;
         top: 50%;
@@ -236,10 +264,6 @@ class RoomClimateCard extends i {
       }
     `;
     }
-    static async getConfigElement() {
-        await Promise.resolve().then(function () { return RoomClimateCardEditor$1; });
-        return document.createElement("room-climate-card-editor");
-    }
     static getStubConfig() {
         return {
             type: "custom:room-climate-card",
@@ -267,7 +291,15 @@ class RoomClimateCard extends i {
         };
     }
     getCardSize() {
-        return 1;
+        return this._config?.grid_rows ?? 1;
+    }
+    getLayoutOptions() {
+        return {
+            grid_columns: this._config?.grid_columns ?? 3,
+            grid_rows: this._config?.grid_rows ?? 1,
+            grid_min_columns: 3,
+            grid_min_rows: 1,
+        };
     }
     render() {
         if (!this._config || !this._hass) {
@@ -316,6 +348,9 @@ class RoomClimateCard extends i {
     }
     truncateRoomName(name, position) {
         const limit = this.getRoomNameLimit(position);
+        if (limit <= 0) {
+            return name;
+        }
         if (name.length <= limit) {
             return name;
         }
@@ -323,7 +358,8 @@ class RoomClimateCard extends i {
         return `${name.slice(0, slicePoint)}..`;
     }
     getRoomNameLimit(position) {
-        return ROOM_NAME_LIMITS[position] ?? 12;
+        const limit = ROOM_NAME_LIMITS[position];
+        return limit !== undefined ? limit : 0;
     }
     getEntityState(entityId) {
         if (!entityId || !this._hass) {
@@ -419,219 +455,6 @@ window.customCards.push({
     type: "room-climate-card",
     name: "Room Climate Card",
     description: "Display temperature, humidity, dew point, and battery level for a room.",
-});
-
-class RoomClimateCardEditor extends i {
-    static get properties() {
-        return {
-            hass: {},
-            _config: {},
-        };
-    }
-    setConfig(config) {
-        this._config = {
-            ...config,
-            layout: {
-                room_name: config.layout?.room_name ?? "top",
-            },
-        };
-    }
-    render() {
-        if (!this._config) {
-            return x ``;
-        }
-        const config = this._config;
-        return x `
-      <div class="editor">
-        <div class="section">
-          <h3>Entities</h3>
-          ${this.renderEntityPicker("entity", "Primary entity", config.entity, true)}
-          ${this.renderEntityPicker("humidity_entity", "Humidity entity", config.humidity_entity)}
-          ${this.renderEntityPicker("dewpoint_entity", "Dew point entity", config.dewpoint_entity)}
-          ${this.renderEntityPicker("battery_entity", "Battery entity", config.battery_entity)}
-        </div>
-
-        <div class="section">
-          <h3>Display</h3>
-          <ha-textfield
-            label="Room name"
-            .value=${config.room_name ?? ""}
-            .configValue=${"room_name"}
-            @input=${this._handleInput}
-          ></ha-textfield>
-          <ha-textfield
-            label="Battery icon"
-            .value=${config.battery_icon ?? ""}
-            .configValue=${"battery_icon"}
-            @input=${this._handleInput}
-          ></ha-textfield>
-          <label class="field-label">Room name position</label>
-          <select
-            class="form-select"
-            .value=${config.layout?.room_name ?? "top"}
-            data-config-value="layout.room_name"
-            @change=${this._handleSelect}
-          >
-            ${this.renderSelectOption("top", "Top")}
-            ${this.renderSelectOption("bottom", "Bottom")}
-            ${this.renderSelectOption("left", "Left")}
-            ${this.renderSelectOption("right", "Right")}
-          </select>
-        </div>
-
-        <div class="section">
-          <h3>Battery thresholds</h3>
-          <ha-textfield
-            label="Low threshold"
-            type="number"
-            min="0"
-            max="100"
-            .value=${config.battery_low_threshold === undefined
-            ? ""
-            : String(config.battery_low_threshold)}
-            .configValue=${"battery_low_threshold"}
-            @input=${this._handleNumberInput}
-          ></ha-textfield>
-          <ha-textfield
-            label="Empty threshold"
-            type="number"
-            min="0"
-            max="100"
-            .value=${config.battery_empty_threshold === undefined
-            ? ""
-            : String(config.battery_empty_threshold)}
-            .configValue=${"battery_empty_threshold"}
-            @input=${this._handleNumberInput}
-          ></ha-textfield>
-        </div>
-      </div>
-    `;
-    }
-    renderEntityPicker(configValue, label, value, required) {
-        return x `
-      <ha-entity-picker
-        .hass=${this.hass}
-        .label=${label}
-        .value=${value ?? ""}
-        .configValue=${configValue}
-        .required=${required ?? false}
-        allow-custom-entity
-        @value-changed=${this._handleValueChange}
-      ></ha-entity-picker>
-    `;
-    }
-    renderSelectOption(value, label) {
-        return x `<option value=${value}>${label}</option>`;
-    }
-    _handleValueChange(ev) {
-        const target = ev.target;
-        const configValue = target.configValue;
-        if (!configValue || !this._config) {
-            return;
-        }
-        const newValue = ev.detail?.value ?? "";
-        this._applyConfigValue(configValue, newValue || undefined);
-    }
-    _handleInput(ev) {
-        const target = ev.target;
-        const configValue = target.configValue;
-        if (!configValue || !this._config) {
-            return;
-        }
-        this._applyConfigValue(configValue, target.value || undefined);
-    }
-    _handleNumberInput(ev) {
-        const target = ev.target;
-        const configValue = target.configValue;
-        if (!configValue || !this._config) {
-            return;
-        }
-        const value = target.value === "" ? undefined : Number(target.value);
-        this._applyConfigValue(configValue, value);
-    }
-    _handleSelect(ev) {
-        const target = ev.target;
-        const configValue = target.dataset.configValue;
-        if (!configValue || !this._config) {
-            return;
-        }
-        this._applyConfigValue(configValue, target.value);
-    }
-    _applyConfigValue(path, value) {
-        if (!this._config) {
-            return;
-        }
-        const updated = { ...this._config };
-        if (path.startsWith("layout.")) {
-            const key = path.split(".")[1];
-            if (key === "room_name") {
-                const nextValue = typeof value === "string" && value
-                    ? value
-                    : undefined;
-                updated.layout = {
-                    ...updated.layout,
-                    room_name: nextValue,
-                };
-            }
-            if (updated.layout?.room_name === undefined) {
-                delete updated.layout;
-            }
-        }
-        else if (value === undefined || value === "") {
-            delete updated[path];
-        }
-        else {
-            updated[path] = value;
-        }
-        this._config = updated;
-        this.dispatchEvent(new CustomEvent("config-changed", {
-            detail: { config: updated },
-            bubbles: true,
-            composed: true,
-        }));
-    }
-    static get styles() {
-        return i$3 `
-      .editor {
-        display: flex;
-        flex-direction: column;
-        gap: 24px;
-      }
-
-      .section {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-      }
-
-      .section h3 {
-        margin: 0;
-        font-size: 1rem;
-        font-weight: 600;
-      }
-
-      .form-select {
-        width: 100%;
-        padding: 8px 10px;
-        border-radius: 8px;
-        border: 1px solid var(--divider-color);
-        font: inherit;
-        background: var(--card-background-color);
-      }
-
-      .field-label {
-        font-size: 0.85rem;
-        font-weight: 600;
-      }
-    `;
-    }
-}
-if (!customElements.get("room-climate-card-editor")) {
-    customElements.define("room-climate-card-editor", RoomClimateCardEditor);
-}
-
-var RoomClimateCardEditor$1 = /*#__PURE__*/Object.freeze({
-    __proto__: null
 });
 
 export { ROOM_NAME_POSITIONS };

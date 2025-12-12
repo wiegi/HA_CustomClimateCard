@@ -27,6 +27,8 @@ export interface RoomClimateCardConfig {
   layout?: RoomClimateCardLayoutConfig;
   battery_low_threshold?: number;
   battery_empty_threshold?: number;
+  grid_columns?: number;
+  grid_rows?: number;
 }
 
 export const ROOM_NAME_POSITIONS: RoomNamePosition[] = [
@@ -37,10 +39,10 @@ export const ROOM_NAME_POSITIONS: RoomNamePosition[] = [
 ];
 
 const ROOM_NAME_LIMITS: Record<RoomNamePosition, number> = {
-  top: 14,
-  bottom: 14,
-  left: 10,
-  right: 10,
+  top: 0,
+  bottom: 0,
+  left: 5,
+  right: 5,
 };
 
 class RoomClimateCard extends LitElement {
@@ -51,12 +53,17 @@ class RoomClimateCard extends LitElement {
     return css`
       :host {
         display: block;
+        height: 100%;
+        width: 100%;
       }
 
       ha-card {
         position: relative;
         overflow: hidden;
         padding: var(--room-climate-card-padding, var(--card-padding, 10px));
+        height: 100%;
+        width: 100%;
+        box-sizing: border-box;
       }
 
       .card-grid {
@@ -67,6 +74,7 @@ class RoomClimateCard extends LitElement {
         grid-template-columns: minmax(0, 1fr);
         grid-auto-rows: minmax(18px, auto);
         min-height: 0;
+        height: 100%;
       }
 
       .room-name-block {
@@ -74,6 +82,12 @@ class RoomClimateCard extends LitElement {
         justify-content: center;
         align-items: center;
         padding: 0;
+        position: relative;
+        width: 100%;
+        height: 100%;
+        min-width: 0;
+        min-height: 0;
+        overflow: hidden;
       }
 
       .room-name {
@@ -84,6 +98,7 @@ class RoomClimateCard extends LitElement {
         max-width: 100%;
         white-space: nowrap;
         overflow: hidden;
+        text-overflow: ellipsis;
       }
 
       .temperature-block {
@@ -143,6 +158,9 @@ class RoomClimateCard extends LitElement {
           -1 * var(--room-climate-card-padding, var(--card-padding, 10px)) + 2px
         );
         padding-left: 2px;
+        justify-content: flex-start;
+        align-items: flex-end;
+        overflow: hidden;
       }
 
       ha-card.room-pos-right .room-name-block {
@@ -150,6 +168,9 @@ class RoomClimateCard extends LitElement {
           -1 * var(--room-climate-card-padding, var(--card-padding, 10px)) + 2px
         );
         padding-right: 2px;
+        justify-content: flex-end;
+        align-items: flex-start;
+        overflow: hidden;
       }
 
       ha-card.room-pos-top .card-grid {
@@ -169,7 +190,7 @@ class RoomClimateCard extends LitElement {
       }
 
       ha-card.room-pos-left .card-grid {
-        grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+        grid-template-columns: 1rem minmax(0, 1fr);
         grid-template-areas:
           "room temp"
           "room metrics";
@@ -177,7 +198,7 @@ class RoomClimateCard extends LitElement {
       }
 
       ha-card.room-pos-right .card-grid {
-        grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+        grid-template-columns: minmax(0, 1fr) 1rem;
         grid-template-areas:
           "temp room"
           "metrics room";
@@ -198,17 +219,26 @@ class RoomClimateCard extends LitElement {
 
       ha-card.room-pos-left .room-name,
       ha-card.room-pos-right .room-name {
-        display: inline-block;
+        writing-mode: vertical-lr;
+        text-orientation: mixed;
+        max-height: 100%;
+        overflow: hidden;
+        text-overflow: clip;
       }
 
       ha-card.room-pos-left .room-name {
-        transform: rotate(-90deg);
+        transform: rotate(180deg);
       }
 
       ha-card.room-pos-right .room-name {
-        transform: rotate(90deg);
+        /* no transform needed - text flows top to bottom */
       }
 
+      ha-card.room-pos-left .room-name-block,
+      ha-card.room-pos-right .room-name-block {
+        max-height: 100%;
+        overflow: hidden;
+      }
       .battery-overlay {
         position: absolute;
         top: 50%;
@@ -247,11 +277,6 @@ class RoomClimateCard extends LitElement {
     `;
   }
 
-  public static async getConfigElement(): Promise<HTMLElement> {
-    await import("./RoomClimateCardEditor");
-    return document.createElement("room-climate-card-editor");
-  }
-
   public static getStubConfig(): RoomClimateCardConfig {
     return {
       type: "custom:room-climate-card",
@@ -283,7 +308,21 @@ class RoomClimateCard extends LitElement {
   }
 
   public getCardSize(): number {
-    return 1;
+    return this._config?.grid_rows ?? 1;
+  }
+
+  public getLayoutOptions(): {
+    grid_columns?: number;
+    grid_rows?: number;
+    grid_min_columns?: number;
+    grid_min_rows?: number;
+  } {
+    return {
+      grid_columns: this._config?.grid_columns ?? 3,
+      grid_rows: this._config?.grid_rows ?? 1,
+      grid_min_columns: 3,
+      grid_min_rows: 1,
+    };
   }
 
   protected render(): TemplateResult {
@@ -341,6 +380,10 @@ class RoomClimateCard extends LitElement {
 
   private truncateRoomName(name: string, position: RoomNamePosition): string {
     const limit = this.getRoomNameLimit(position);
+    if (limit <= 0) {
+      return name;
+    }
+
     if (name.length <= limit) {
       return name;
     }
@@ -350,7 +393,8 @@ class RoomClimateCard extends LitElement {
   }
 
   private getRoomNameLimit(position: RoomNamePosition): number {
-    return ROOM_NAME_LIMITS[position] ?? 12;
+    const limit = ROOM_NAME_LIMITS[position];
+    return limit !== undefined ? limit : 0;
   }
 
   private getEntityState(entityId?: string): HassEntity | undefined {
