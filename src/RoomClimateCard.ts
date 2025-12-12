@@ -1,4 +1,5 @@
 import { LitElement, html, css, CSSResultGroup, TemplateResult } from "lit";
+import "./RoomClimateCardEditor";
 
 export interface HassEntity {
   state: string;
@@ -289,6 +290,10 @@ class RoomClimateCard extends LitElement {
         room_name: "top",
       },
     };
+  }
+
+  public static getConfigElement(): HTMLElement {
+    return document.createElement("room-climate-card-editor");
   }
 
   public set hass(hass: HomeAssistant) {
